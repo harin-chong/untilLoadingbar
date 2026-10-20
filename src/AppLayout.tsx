@@ -6,7 +6,7 @@ Typography,
 styled,
 } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
-import SearchIcon from '@mui/icons-material/search'
+import SearchIcon from '@mui/icons-material/Search'
 import LibraryHead from './layout/components/LibraryHead';
 import EmptyPlaylist from './layout/components/EmptyPlaylist';
 
