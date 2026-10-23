@@ -15,13 +15,29 @@ const PORT = process.env.PORT || 4000;
 const allowedOrigins = [
   "http://localhost:3000",
   "https://until-loadingbar-wbz7.vercel.app",
-  "https://until-loadingbar-wbz7-kusptyyx3-lovedubus-projects.vercel.app",
-  "https://until-loadingbar-wbz7-7zlfih0ng-lovedubus-projects.vercel.app",
 ];
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // origin이 없는 요청도 허용 (예: 직접 API 접속)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // 정식 도메인 또는 Vercel Preview 도메인 허용
+      const isAllowed =
+        allowedOrigins.includes(origin) ||
+        /^https:\/\/until-loadingbar-wbz7-[a-z0-9]+-lovedubus-projects\.vercel\.app$/.test(
+          origin
+        );
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS: " + origin));
+    },
   })
 );
 
