@@ -70,9 +70,10 @@ module.exports = (env, argv) => {
         template: path.resolve(__dirname, "public", "index.html"),
       }),
       new Dotenv({
-        allowEmptyValues: true,
-        systemvars: true,
-      }),
+  allowEmptyValues: true,
+  systemvars: true,
+  defaults: false,
+}),
     ],
   };
 };

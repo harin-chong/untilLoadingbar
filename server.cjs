@@ -9,12 +9,17 @@ let cachedToken = null;
 let tokenExpiresAt = 0;
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
-// 프론트엔드에서 오는 요청 허용
+// 로컬 개발 및 Vercel 프론트엔드 허용
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://until-loadingbar-xtqv.vercel.app",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: allowedOrigins,
   })
 );
 
@@ -51,8 +56,6 @@ async function getSpotifyToken() {
 app.get("/api/new-releases", async (req, res) => {
   try {
     const token = await getSpotifyToken();
-
-    // 검색 결과를 10개씩, 총 3페이지 요청
     const offsets = [0, 10, 20];
 
     const responses = await Promise.all(
@@ -83,12 +86,12 @@ app.get("/api/new-releases", async (req, res) => {
       error.response?.data || error.message
     );
 
-    res.status(error.response?.status || 500).json({
+    res.status(500).json({
       message: "Failed to fetch albums",
     });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Spotify API server running on http://localhost:${PORT}`);
+  console.log(`Spotify API server running on port ${PORT}`);
 });
