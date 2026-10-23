@@ -16,6 +16,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "https://until-loadingbar-wbz7.vercel.app",
   "https://until-loadingbar-wbz7-kusptyyx3-lovedubus-projects.vercel.app",
+  "https://until-loadingbar-wbz7-7zlfih0ng-lovedubus-projects.vercel.app",
 ];
 
 app.use(
