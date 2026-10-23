@@ -1,0 +1,94 @@
+
+require("dotenv").config();
+
+const express = require("express");
+const axios = require("axios");
+const cors = require("cors");
+
+let cachedToken = null;
+let tokenExpiresAt = 0;
+
+const app = express();
+const PORT = 4000;
+
+// 프론트엔드에서 오는 요청 허용
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+  })
+);
+
+// Spotify access token 발급 및 캐싱
+async function getSpotifyToken() {
+  if (cachedToken && Date.now() < tokenExpiresAt) {
+    return cachedToken;
+  }
+
+  const response = await axios.post(
+    "https://accounts.spotify.com/api/token",
+    new URLSearchParams({
+      grant_type: "client_credentials",
+    }),
+    {
+      auth: {
+        username: process.env.SPOTIFY_CLIENT_ID,
+        password: process.env.SPOTIFY_CLIENT_SECRET,
+      },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    }
+  );
+
+  cachedToken = response.data.access_token;
+  tokenExpiresAt =
+    Date.now() + response.data.expires_in * 1000 - 60000;
+
+  return cachedToken;
+}
+
+// 앨범 데이터 가져오기
+app.get("/api/new-releases", async (req, res) => {
+  try {
+    const token = await getSpotifyToken();
+
+    // 검색 결과를 10개씩, 총 3페이지 요청
+    const offsets = [0, 10, 20];
+
+    const responses = await Promise.all(
+      offsets.map((offset) =>
+        axios.get("https://api.spotify.com/v1/search", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            q: "year:2026",
+            type: "album",
+            limit: 10,
+            offset,
+          },
+        })
+      )
+    );
+
+    const albums = responses.flatMap(
+      (response) => response.data.albums.items
+    );
+
+    res.json(albums);
+  } catch (error) {
+    console.error(
+      "Spotify API error:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
+
+    res.status(error.response?.status || 500).json({
+      message: "Failed to fetch albums",
+    });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Spotify API server running on http://localhost:${PORT}`);
+});

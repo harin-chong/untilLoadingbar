@@ -9,6 +9,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search'
 import LibraryHead from './layout/components/LibraryHead';
 import EmptyPlaylist from './layout/components/EmptyPlaylist';
+import Navbar from './layout/components/Navbar';
 
 const Layout = styled('div')({
     display: 'flex',
@@ -88,7 +89,10 @@ const AppLayout = () => {
             </ContentBox>
         </Sidebar>
 
-        <Outlet/>
+        <ContentBox>
+            <Navbar/>
+            <Outlet/>
+        </ContentBox>
     </Layout>
   )
 }

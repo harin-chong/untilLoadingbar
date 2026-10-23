@@ -7,6 +7,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.5.0",
     "@mui/material": "^9.5.0",
+    "@tanstack/react-query": "^5.104.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
@@ -15,6 +16,10 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "axios": "^1.20.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router": "^8.5.0",
@@ -27,7 +32,8 @@
     "start": "webpack serve --mode development --open",
     "build": "webpack --mode production",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "server": "node server.cjs"
   },
   "eslintConfig": {
     "extends": [
@@ -54,6 +60,7 @@
     "@babel/preset-react": "^7.29.7",
     "@babel/preset-typescript": "^7.29.7",
     "@svgr/webpack": "^8.1.0",
+    "@types/cors": "^2.8.19",
     "babel-loader": "^10.1.1",
     "clean-webpack-plugin": "^4.0.0",
     "css-loader": "^7.1.5",
