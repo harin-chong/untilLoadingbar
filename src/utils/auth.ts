@@ -2,9 +2,12 @@
 import { generateRandomString } from "./crypto";
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID!;
-const REDIRECT_URI =
-  "https://until-loadingbar-wbz7-218p18cau-lovedubus-projects.vercel.app/";
 
+const REDIRECT_URI =
+  window.location.hostname === "127.0.0.1"
+    ? "http://127.0.0.1:3000/"
+    : "https://until-loadingbar-wbz7-218p18cau-lovedubus-projects.vercel.app/";
+    
 const AUTH_ENDPOINT = "https://accounts.spotify.com/authorize";
 const SCOPES = [
   "user-read-private",
@@ -37,13 +40,15 @@ export const getSpotifyAuthUrl = async (): Promise<string> => {
   sessionStorage.setItem("code_verifier", codeVerifier);
 
 const params = new URLSearchParams({
-  client_id: CLIENT_ID,
-  response_type: "code",
-  redirect_uri: REDIRECT_URI,
-  code_challenge_method: "S256",
-  code_challenge: codeChallenge,
-  scope: SCOPES.join(" "),
-});
+    client_id: CLIENT_ID,
+    response_type: "code",
+    redirect_uri: REDIRECT_URI,
+    code_challenge_method: "S256",
+    code_challenge: codeChallenge,
+    scope: SCOPES.join(" "),
+  });
+
+  console.log("Redirect URI:", REDIRECT_URI);
 
   return `${AUTH_ENDPOINT}?${params.toString()}`;
 };

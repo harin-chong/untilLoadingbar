@@ -2,9 +2,7 @@
 import axios from "axios";
 
 const clientId = process.env.SPOTIFY_CLIENT_ID!;
-const REDIRECT_URI =
-  "https://until-loadingbar-wbz7-218p18cau-lovedubus-projects.vercel.app/";
-  
+const REDIRECT_URI = `${window.location.origin}/`;
 const encodedBase64 = (data: string): string => {
   return Buffer.from(data).toString("base64");
 };

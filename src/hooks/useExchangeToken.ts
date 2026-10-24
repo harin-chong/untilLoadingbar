@@ -4,8 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 const CLIENT_ID =
   process.env.SPOTIFY_CLIENT_ID!;
 
-const REDIRECT_URI =
-  "https://until-loadingbar-wbz7-218p18cau-lovedubus-projects.vercel.app/";
+const REDIRECT_URI = `${window.location.origin}/`;
 interface SpotifyTokenResponse {
   access_token: string;
   token_type: string;
