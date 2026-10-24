@@ -5,7 +5,8 @@ const clientId = process.env.SPOTIFY_CLIENT_ID!;
 const REDIRECT_URI =
   window.location.hostname === "127.0.0.1"
     ? "http://127.0.0.1:3000/"
-    : "https://until-loadingbar-wbz7-218p18cau-lovedubus-projects.vercel.app/";
+    : "https://until-loadingbar-wbz7.vercel.app/";
+    
 const encodedBase64 = (data: string): string => {
   return Buffer.from(data).toString("base64");
 };
