@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const clientId = process.env.SPOTIFY_CLIENT_ID!;
-const redirectUri = "http://127.0.0.1:3000/callback";
+const redirectUri = "http://127.0.0.1:3000/";
 
 const encodedBase64 = (data: string): string => {
   return Buffer.from(data).toString("base64");

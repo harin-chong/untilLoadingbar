@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 4000;
 // 로컬 개발 및 Vercel 프론트엔드 허용
 const allowedOrigins = [
   "http://localhost:3000",
+  "http://127.0.0.1:3000",
   "https://until-loadingbar-wbz7.vercel.app",
 ];
 
