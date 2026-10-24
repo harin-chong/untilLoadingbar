@@ -1,4 +1,3 @@
-
 import { generateRandomString } from "./crypto";
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID!;
@@ -7,8 +6,9 @@ const REDIRECT_URI =
   window.location.hostname === "127.0.0.1"
     ? "http://127.0.0.1:3000/"
     : "https://until-loadingbar-wbz7-218p18cau-lovedubus-projects.vercel.app/";
-    
+
 const AUTH_ENDPOINT = "https://accounts.spotify.com/authorize";
+
 const SCOPES = [
   "user-read-private",
   "user-read-email",
@@ -48,6 +48,7 @@ const params = new URLSearchParams({
     scope: SCOPES.join(" "),
   });
 
+  console.log("Current hostname:", window.location.hostname);
   console.log("Redirect URI:", REDIRECT_URI);
 
   return `${AUTH_ENDPOINT}?${params.toString()}`;
