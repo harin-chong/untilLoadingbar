@@ -9,7 +9,7 @@ import {
 
 import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search';
-
+import Profile from './common/component/Profile';
 import LibraryHead from './layout/components/LibraryHead';
 import EmptyPlaylist from './layout/components/EmptyPlaylist';
 import Navbar from './layout/components/Navbar';
@@ -140,6 +140,12 @@ const AppLayout = () => {
 
       <ContentBox>
         <Navbar />
+
+        <Profile
+    accessToken={sessionStorage.getItem('access_token')}
+  />
+
+
         <Outlet />
       </ContentBox>
     </Layout>

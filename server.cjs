@@ -18,6 +18,7 @@ const allowedOrigins = [
   "https://until-loadingbar-wbz7.vercel.app",
   "https://until-loadingbar-wbz7-218p18cau-lovedubus-projects.vercel.app",
 ];
+
 app.use(
   cors({
     origin: (origin, callback) => {
