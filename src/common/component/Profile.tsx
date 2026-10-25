@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 import useGetCurrentUserProfile from '../../hooks/useGetCurrentUserProfile';
 
@@ -21,6 +22,16 @@ const Profile = ({ accessToken }: ProfileProps) => {
     isPending,
     isError,
   } = useGetCurrentUserProfile(accessToken);
+
+  // 1. 로그아웃 함수는 return보다 위에 선언
+  const handleLogout = () => {
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('expires_at');
+    sessionStorage.removeItem('code_verifier');
+
+    window.location.reload();
+  };
 
   if (!accessToken) {
     return null;
@@ -43,13 +54,7 @@ const Profile = ({ accessToken }: ProfileProps) => {
 
   if (isError || !user) {
     return (
-      <Box
-        sx={{
-          p: 2,
-          color: 'text.secondary',
-          textAlign: 'center',
-        }}
-      >
+      <Box sx={{ p: 2, color: 'text.secondary', textAlign: 'center' }}>
         <Typography variant="body2">
           Could not load your Spotify profile.
         </Typography>
@@ -102,9 +107,10 @@ const Profile = ({ accessToken }: ProfileProps) => {
           boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
         }}
       >
-        {user.display_name?.charAt(0)?.toUpperCase() ?? (
-          <MusicNoteIcon fontSize="large" />
-        )}
+        {!user.images?.[0]?.url &&
+          (user.display_name?.charAt(0)?.toUpperCase() || (
+            <MusicNoteIcon fontSize="large" />
+          ))}
       </Avatar>
 
       <Box
@@ -140,30 +146,53 @@ const Profile = ({ accessToken }: ProfileProps) => {
           {user.display_name || user.id}
         </Typography>
 
-        <Button
-          component="a"
-          href={user.external_urls.spotify}
-          target="_blank"
-          rel="noreferrer"
-          variant="contained"
-          endIcon={<OpenInNewIcon />}
-          sx={{
-            bgcolor: '#1DB954',
-            color: '#111',
-            fontWeight: 700,
-            textTransform: 'none',
-            borderRadius: 20,
-            px: 2.2,
-            py: 0.8,
-            '&:hover': {
-              bgcolor: '#1ed760',
-              transform: 'translateY(-1px)',
-            },
-            transition: 'all 0.2s ease',
-          }}
-        >
-          View profile
-        </Button>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <Button
+            component="a"
+            href={user.external_urls.spotify}
+            target="_blank"
+            rel="noreferrer"
+            variant="contained"
+            endIcon={<OpenInNewIcon />}
+            sx={{
+              bgcolor: '#1DB954',
+              color: '#111',
+              fontWeight: 700,
+              textTransform: 'none',
+              borderRadius: 20,
+              px: 2.2,
+              py: 0.8,
+              '&:hover': {
+                bgcolor: '#1ed760',
+                transform: 'translateY(-1px)',
+              },
+              transition: 'all 0.2s ease',
+            }}
+          >
+            View profile
+          </Button>
+
+          <Button
+            onClick={handleLogout}
+            variant="outlined"
+            startIcon={<LogoutIcon />}
+            sx={{
+              color: '#fff',
+              borderColor: 'rgba(255,255,255,0.25)',
+              fontWeight: 600,
+              textTransform: 'none',
+              borderRadius: 20,
+              px: 2,
+              py: 0.8,
+              '&:hover': {
+                borderColor: '#fff',
+                bgcolor: 'rgba(255,255,255,0.08)',
+              },
+            }}
+          >
+            Log out
+          </Button>
+        </Box>
       </Box>
     </Box>
   );
