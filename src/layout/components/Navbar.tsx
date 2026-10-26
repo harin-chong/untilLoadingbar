@@ -1,13 +1,28 @@
-import React from 'react'
-import LoginButton from '../../common/component/LoginButton'
-import { Box } from '@mui/material'
 
-const Navbar = () => {
-  return (
-    <Box display = "flex" justifyContent = "flex-end" alignItems = "center" height = "64px">
-        <LoginButton />
-    </Box>
-  )
+import { Box } from '@mui/material';
+import LoginButton from '../../common/component/LoginButton';
+
+interface NavbarProps {
+  accessToken: string | null;
 }
 
-export default Navbar
+const Navbar = ({ accessToken }: NavbarProps) => {
+  return (
+    <Box
+  component="header"
+  sx={{
+  display: 'flex',
+  justifyContent: 'flex-end',
+  alignItems: 'center',
+  minHeight: 32,
+  px: { xs: 1, md: 2 },
+  mb: 0,
+  flexShrink: 0,
+}}
+>
+  {!accessToken && <LoginButton />}
+</Box>
+  );
+};
+
+export default Navbar;

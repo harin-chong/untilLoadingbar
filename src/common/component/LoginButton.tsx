@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Button } from '@mui/material';
 import { getSpotifyAuthUrl } from '../../utils/auth';
 
@@ -16,9 +15,26 @@ const LoginButton = () => {
   return (
     <Button
       variant="contained"
-      color="secondary"
-      size="large"
       onClick={login}
+      sx={{
+        bgcolor: '#fff',
+        color: '#121212',
+        borderRadius: '999px',
+        px: 4,
+        py: 1.2,
+        minWidth: 120,
+        fontSize: '1rem',
+        fontWeight: 700,
+        textTransform: 'none',
+        boxShadow: 'none',
+        transition: 'transform 0.2s ease',
+
+        '&:hover': {
+          bgcolor: '#f0f0f0',
+          transform: 'scale(1.04)',
+          boxShadow: 'none',
+        },
+      }}
     >
       Login
     </Button>

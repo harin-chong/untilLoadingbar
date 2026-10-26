@@ -27,12 +27,20 @@ const NewReleases = () => {
 console.log("Card type:", typeof AlbumCard);
 
   if (isPending) {
-    return (
-      <Box display="flex" justifyContent="center" padding={4}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '60vh',
+        width: '100%',
+      }}
+    >
+      <CircularProgress />
+    </Box>
+  );
+}
 
   if (isError) {
     return (
