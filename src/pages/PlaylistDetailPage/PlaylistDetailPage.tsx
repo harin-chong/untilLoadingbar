@@ -1,229 +1,243 @@
 
-import { useEffect, useState } from "react";
-import { useParams, useOutletContext } from "react-router-dom";
-import {
-  Box,
-  CircularProgress,
-  Typography,
-} from "@mui/material";
+import { Box, Typography, IconButton, Chip } from "@mui/material";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
+import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
+import AlbumRoundedIcon from "@mui/icons-material/AlbumRounded";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
+import { useLocation } from "react-router-dom";
 
-import {
-  getPlaylistById,
-  type PlaylistDetail,
-} from "../../apis/playlistApi";
-
-interface LayoutContext {
-  accessToken: string | null;
+interface Track {
+  id: string;
+  name: string;
+  duration_ms: number;
+  artists: {
+    id: string;
+    name: string;
+  }[];
+  album: {
+    name: string;
+    images: {
+      url: string;
+      height: number | null;
+      width: number | null;
+    }[];
+  };
 }
 
-const PlaylistDetailPage = () => {
-  const { id } = useParams<{ id: string }>();
-  const { accessToken } = useOutletContext<LayoutContext>();
+const PlaylistPage = () => {
+  const location = useLocation();
+  const track = location.state?.track as Track | undefined;
 
-  const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!accessToken || !id) {
-      setIsLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchPlaylist = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const data = await getPlaylistById(accessToken, id);
-
-        if (!cancelled) {
-          setPlaylist(data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Failed to load playlist."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void fetchPlaylist();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken, id]);
-
-  if (!accessToken) {
+  if (!track) {
     return (
-      <Typography sx={{ p: 3 }}>
-        Please log in to view this playlist.
-      </Typography>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-        <CircularProgress />
+      
+      <Box sx={{ p: 4 }}>
+        <Typography variant="h5" fontWeight={700}>
+          Select a song
+        </Typography>
+        <Typography color="text.secondary" sx={{ mt: 1 }}>
+          Choose a song from your library to see its details.
+        </Typography>
       </Box>
     );
   }
 
-  if (error) {
-    return (
-      <Typography color="error" sx={{ p: 3 }}>
-        {error}
-      </Typography>
-    );
-  }
+  const duration = `${Math.floor(track.duration_ms / 60000)}:${String(
+    Math.floor((track.duration_ms % 60000) / 1000)
+  ).padStart(2, "0")}`;
 
-  if (!playlist) {
-    return (
-      <Typography sx={{ p: 3 }}>
-        Playlist not found.
-      </Typography>
-    );
-  }
+  const image = track.album.images[0]?.url;
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 } }}>
-      {/* Playlist header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "end",
-          gap: 3,
-          mb: 4,
-          flexWrap: "wrap",
-        }}
-      >
-        {playlist.images[0]?.url && (
-          <Box
-            component="img"
-            src={playlist.images[0].url}
-            alt={playlist.name}
-            sx={{
-              width: { xs: 160, md: 220 },
-              height: { xs: 160, md: 220 },
-              objectFit: "cover",
-              borderRadius: 1,
-              boxShadow: 3,
-            }}
-          />
-        )}
 
-        <Box>
-          <Typography variant="body2">
-            Public Playlist
-          </Typography>
+    
+    <Box
+      sx={{
+        minHeight: "100%",
+        mx: -1,
+        mt: -1,
+        overflow: "hidden",
+        borderRadius: 2,
+        background: image
+          ? `linear-gradient(180deg, rgba(90,75,100,0.65) 0%, rgba(30,30,35,0.92) 340px, #121212 600px)`
+          : "#121212",
+      }}
+    >
+      <Box sx={{ p: { xs: 2, md: 4 } }}>
+        <Chip
+          label="SONG DETAILS"
+          size="small"
+          sx={{
+            mb: 3,
+            color: "white",
+            bgcolor: "rgba(255,255,255,0.12)",
+            fontWeight: 700,
+            letterSpacing: 1,
+          }}
+        />
 
-          <Typography
-            variant="h2"
-            fontWeight={700}
-            sx={{ my: 1, overflowWrap: "anywhere" }}
-          >
-            {playlist.name}
-          </Typography>
-
-          {playlist.description && (
-            <Typography color="text.secondary" sx={{ mb: 1 }}>
-              {playlist.description}
-            </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            alignItems: { xs: "flex-start", md: "flex-end" },
+            gap: { xs: 3, md: 4 },
+          }}
+        >
+          {image && (
+            <Box
+              component="img"
+              src={image}
+              alt={track.album.name}
+              sx={{
+                width: { xs: 200, sm: 240, md: 260 },
+                aspectRatio: "1 / 1",
+                objectFit: "cover",
+                borderRadius: 2,
+                boxShadow: "0 12px 36px rgba(0,0,0,0.35)",
+              }}
+            />
           )}
 
-          <Typography variant="body2" color="text.secondary">
-            {playlist.items.total} songs
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Track list */}
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
-        Tracks
-      </Typography>
-
-      {playlist.items.items.map((entry, index) => {
-        const track = entry.item;
-
-        if (!track) return null;
-
-        return (
-          <Box
-            key={`${track.id}-${index}`}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              p: 1,
-              borderRadius: 1,
-              "&:hover": {
-                backgroundColor: "action.hover",
-              },
-            }}
-          >
+          <Box sx={{ minWidth: 0, pb: { md: 1 } }}>
             <Typography
-              color="text.secondary"
-              sx={{ width: 24, textAlign: "center" }}
+              variant="body2"
+              sx={{ color: "rgba(255,255,255,0.8)", mb: 1 }}
             >
-              {index + 1}
+              Song
             </Typography>
 
-            {track.album.images[0]?.url && (
-              <Box
-                component="img"
-                src={track.album.images[0].url}
-                alt={track.album.name}
-                sx={{
-                  width: 48,
-                  height: 48,
-                  objectFit: "cover",
-                  borderRadius: 1,
-                }}
-              />
-            )}
+            <Typography
+              sx={{
+                fontSize: { xs: "2.2rem", sm: "3rem", md: "3.6rem" },
+                lineHeight: 1.08,
+                fontWeight: 800,
+                letterSpacing: "-0.04em",
+                overflowWrap: "anywhere",
+                mb: 2,
+              }}
+            >
+              {track.name}
+            </Typography>
 
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography noWrap fontWeight={500}>
-                {track.name}
-              </Typography>
-
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                noWrap
-              >
-                {track.artists
-                  .map((artist) => artist.name)
-                  .join(", ")}
-              </Typography>
-            </Box>
+            <Typography
+              sx={{ color: "rgba(255,255,255,0.8)", fontWeight: 600 }}
+            >
+              {track.artists.map((artist) => artist.name).join(", ")}
+            </Typography>
 
             <Typography
               variant="body2"
-              color="text.secondary"
-              sx={{ flexShrink: 0 }}
+              sx={{ color: "rgba(255,255,255,0.65)", mt: 1 }}
             >
-              {Math.floor(track.duration_ms / 60000)}:
-              {String(
-                Math.floor((track.duration_ms % 60000) / 1000)
-              ).padStart(2, "0")}
+              {track.album.name} · {duration}
             </Typography>
           </Box>
-        );
-      })}
+        </Box>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 4 }}>
+          <IconButton
+            aria-label="Play song"
+            sx={{
+              width: 58,
+              height: 58,
+              bgcolor: "#1ed760",
+              color: "#000",
+              "&:hover": { bgcolor: "#3be477", transform: "scale(1.04)" },
+            }}
+          >
+            <PlayArrowRoundedIcon sx={{ fontSize: 36 }} />
+          </IconButton>
+
+          <IconButton
+            aria-label="Add to favourites"
+            sx={{
+              color: "rgba(255,255,255,0.7)",
+              "&:hover": { color: "#1ed760" },
+            }}
+          >
+            <FavoriteBorderRoundedIcon sx={{ fontSize: 30 }} />
+          </IconButton>
+
+          <IconButton
+            aria-label="More options"
+            sx={{ color: "rgba(255,255,255,0.7)" }}
+          >
+            <MoreHorizRoundedIcon sx={{ fontSize: 30 }} />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ mt: 5 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+            Track information
+          </Typography>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(3, minmax(0, 1fr))",
+              },
+              gap: 2,
+            }}
+          >
+            <InfoItem
+              icon={<AlbumRoundedIcon />}
+              label="Album"
+              value={track.album.name}
+            />
+            <InfoItem
+              icon={<AccessTimeRoundedIcon />}
+              label="Duration"
+              value={duration}
+            />
+            <InfoItem
+              icon={<PersonOutlineRoundedIcon />}
+              label="Artist"
+              value={track.artists.map((artist) => artist.name).join(", ")}
+            />
+          </Box>
+        </Box>
+      </Box>
     </Box>
   );
 };
 
-export default PlaylistDetailPage;
+interface InfoItemProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}
+
+const InfoItem = ({ icon, label, value }: InfoItemProps) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 1.5,
+      p: 2,
+      borderRadius: 2,
+      bgcolor: "rgba(255,255,255,0.05)",
+      border: "1px solid rgba(255,255,255,0.06)",
+      minWidth: 0,
+    }}
+  >
+    <Box sx={{ color: "#1ed760", mt: 0.2 }}>{icon}</Box>
+    <Box sx={{ minWidth: 0 }}>
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography
+        fontWeight={600}
+        sx={{ mt: 0.5, overflowWrap: "anywhere" }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  </Box>
+);
+
+export default PlaylistPage;

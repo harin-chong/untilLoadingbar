@@ -22,10 +22,10 @@ function App() {
       <Routes>
         <Route path="/" element={<AppLayout />}>
           <Route index element={<HomePage />} />
-          <Route path="search/:keyword" element={<SearchWithPage />}/>
-          <Route path="search" element={<SearchPage />}/>
-          <Route path="/playlist/:id" element={<PlaylistDetailPage />}/>
-          <Route path="/playlist" element={<PlaylistPage />}/>
+          <Route path="search" element={<SearchPage />} />
+          <Route path="search/:keyword" element={<SearchWithPage />} />
+          <Route path="playlist/:id" element={<PlaylistDetailPage />} />
+          <Route path="playlist" element={<PlaylistPage />} />
         </Route>
       </Routes>
     </Suspense>
