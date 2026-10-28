@@ -1,45 +1,70 @@
-import React, { useEffect, useRef, useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Box, Typography, styled } from "@mui/material";
-import Library from "./layout/components/Library";
 import HomeIcon from "@mui/icons-material/Home";
 import SearchIcon from "@mui/icons-material/Search";
+
+import Library from "./layout/components/Library";
 import Profile from "./common/component/Profile";
 import LibraryHead from "./layout/components/LibraryHead";
-import EmptyPlaylist from "./layout/components/EmptyPlaylist";
 import Navbar from "./layout/components/Navbar";
 import { useExchangeToken } from "./hooks/useExchangeToken";
 
 const Layout = styled("div")({
   display: "flex",
+  gap: 8,
   height: "100vh",
-  padding: "8px",
+  padding: 8,
   boxSizing: "border-box",
+  overflow: "hidden",
+  backgroundColor: "#000",
 });
 
-const Sidebar = styled("div")(({ theme }) => ({
-  width: "331px",
+const Sidebar = styled("aside")(({ theme }) => ({
+  width: 331,
+  minWidth: 240,
   height: "100%",
+  flexShrink: 0,
   display: "flex",
   flexDirection: "column",
+  gap: 8,
   [theme.breakpoints.down("sm")]: {
     display: "none",
   },
 }));
 
-const ContentBox = styled(Box)(({ theme }) => ({
-  borderRadius: "8px",
+const SidePanel = styled(Box)(({ theme }) => ({
+  borderRadius: 8,
   backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.primary,
+  padding: 8,
+  boxSizing: "border-box",
+}));
+
+const NavigationPanel = styled(SidePanel)({
+  flexShrink: 0,
+});
+
+const LibraryPanel = styled(SidePanel)({
+  flex: 1,
+  minHeight: 0,
+  overflowY: "auto",
+});
+
+const MainPanel = styled(Box)(({ theme }) => ({
   flex: "1 1 0",
   minWidth: 0,
   minHeight: 0,
-  padding: "8px",
-  marginBottom: "8px",
-  marginRight: "8px",
-  boxSizing: "border-box",
+  height: "100%",
   overflowY: "auto",
+  position: "relative",
+  borderRadius: 8,
+  backgroundColor: theme.palette.background.paper,
+  color: theme.palette.text.primary,
+  boxSizing: "border-box",
 }));
+
 const NavList = styled("ul")({
   listStyle: "none",
   padding: 0,
@@ -50,8 +75,9 @@ const StyledNavLink = styled(NavLink)(({ theme }) => ({
   textDecoration: "none",
   display: "flex",
   alignItems: "center",
-  gap: "20px",
-  padding: "8px",
+  gap: 16,
+  padding: "10px 8px",
+  borderRadius: 6,
   color: theme.palette.text.secondary,
 
   "&:hover": {
@@ -61,19 +87,19 @@ const StyledNavLink = styled(NavLink)(({ theme }) => ({
   "&.active": {
     color: theme.palette.text.primary,
   },
+
+  "& .MuiTypography-root": {
+    fontSize: 14,
+  },
 }));
 
 const AppLayout = () => {
-  console.log("AppLayout rendered");
-
   const { mutateAsync } = useExchangeToken();
   const exchangeStarted = useRef(false);
 
   const [accessToken, setAccessToken] = useState<string | null>(() =>
     sessionStorage.getItem("access_token"),
   );
-
-  console.log("Token exists:", Boolean(accessToken));
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -94,6 +120,8 @@ const AppLayout = () => {
     const exchange = async () => {
       try {
         const tokenData = await mutateAsync(code);
+
+        sessionStorage.setItem("access_token", tokenData.access_token);
         setAccessToken(tokenData.access_token);
 
         window.history.replaceState(
@@ -112,43 +140,59 @@ const AppLayout = () => {
     void exchange();
   }, [mutateAsync]);
 
-  console.log("AppLayout rendered");
-  console.log("Current accessToken:", accessToken);
-
   return (
     <Layout>
+      {/* Left sidebar */}
       <Sidebar>
-        <ContentBox>
+        {/* Home and Search panel */}
+        <NavigationPanel>
           <NavList>
             <li>
-              <StyledNavLink to="/">
+              <StyledNavLink to="/" end>
                 <HomeIcon />
-                <Typography variant="h2" fontWeight={700}>
-                  Home
-                </Typography>
+                <Typography fontWeight={700}>Home</Typography>
               </StyledNavLink>
+            </li>
+
+            <li>
               <StyledNavLink to="/search">
                 <SearchIcon />
-                <Typography variant="h2" fontWeight={700}>
-                  Search
-                </Typography>
+                <Typography fontWeight={700}>Search</Typography>
               </StyledNavLink>
+            </li>
+          </NavList>
+        </NavigationPanel>
+
+        {/* Library panel */}
+        <LibraryPanel>
+          <NavList>
+            <li>
               <StyledNavLink to="/playlist">
                 <LibraryHead />
               </StyledNavLink>
-              <Library accessToken={accessToken} />
             </li>
           </NavList>
-        </ContentBox>
+
+          <Library accessToken={accessToken} />
+        </LibraryPanel>
       </Sidebar>
 
-      <ContentBox sx={{ pt: 0 }}>
-        <Navbar accessToken={accessToken} />
+      {/* Main content: remains mounted while nested routes change */}
+      <MainPanel>
+        <Box
+          sx={{
+            position: "relative",
+            minHeight: "100%",
+          }}
+        >
+          <Navbar accessToken={accessToken} />
+          <Profile accessToken={accessToken} />
 
-        <Profile accessToken={accessToken} />
-
-        <Outlet context={{ accessToken }} />
-      </ContentBox>
+          <Box sx={{ px: { xs: 1, md: 2 }, pb: 2 }}>
+            <Outlet context={{ accessToken }} />
+          </Box>
+        </Box>
+      </MainPanel>
     </Layout>
   );
 };

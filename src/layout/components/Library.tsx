@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { Box, CircularProgress, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   getMyPlaylists,
   getPlaylistById,
@@ -20,26 +20,30 @@ const Library = ({ accessToken }: LibraryProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
-    null,
-  );
   const [selectedPlaylist, setSelectedPlaylist] =
     useState<PlaylistDetail | null>(null);
   const [isLoadingTracks, setIsLoadingTracks] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { ref, inView } = useInView({ rootMargin: "100px" });
+  const location = useLocation();
+
+  const { ref, inView } = useInView({
+    rootMargin: "100px",
+  });
+
   const loadingRef = useRef(false);
 
-  // Reset when the access token changes.
+  // Get the selected playlist ID from the current URL.
+  const selectedPlaylistId =
+    location.pathname.match(/^\/playlist\/([^/]+)$/)?.[1] ?? null;
+
+  // Reset the playlist list when the access token changes.
   useEffect(() => {
     setPlaylists([]);
     setNextOffset(0);
     setHasMore(true);
     setError(null);
-    setSelectedPlaylistId(null);
-    setSelectedPlaylist(null);
     loadingRef.current = false;
   }, [accessToken]);
 
@@ -49,6 +53,8 @@ const Library = ({ accessToken }: LibraryProps) => {
       return;
     }
 
+    let cancelled = false;
+
     const fetchPlaylists = async () => {
       loadingRef.current = true;
       setIsLoading(true);
@@ -56,23 +62,35 @@ const Library = ({ accessToken }: LibraryProps) => {
 
       try {
         const page = await getMyPlaylists(accessToken, nextOffset, 20);
+
+        if (cancelled) return;
+
         setPlaylists((previous) => [...previous, ...page.items]);
         setNextOffset(page.nextOffset);
         setHasMore(page.hasMore);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load playlists",
-        );
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Failed to load playlists.",
+          );
+        }
       } finally {
-        loadingRef.current = false;
-        setIsLoading(false);
+        if (!cancelled) {
+          loadingRef.current = false;
+          setIsLoading(false);
+        }
       }
     };
 
     void fetchPlaylists();
+
+    return () => {
+      cancelled = true;
+      loadingRef.current = false;
+    };
   }, [accessToken, inView, hasMore, nextOffset]);
 
-  // Load tracks for the expanded playlist.
+  // Load tracks for the selected playlist.
   useEffect(() => {
     if (!accessToken || !selectedPlaylistId) {
       setSelectedPlaylist(null);
@@ -90,6 +108,7 @@ const Library = ({ accessToken }: LibraryProps) => {
 
       try {
         const data = await getPlaylistById(accessToken, selectedPlaylistId);
+
         if (!cancelled) {
           setSelectedPlaylist(data);
         }
@@ -113,6 +132,7 @@ const Library = ({ accessToken }: LibraryProps) => {
     };
   }, [accessToken, selectedPlaylistId]);
 
+  // Login prompt.
   if (!accessToken) {
     return (
       <Box
@@ -126,16 +146,20 @@ const Library = ({ accessToken }: LibraryProps) => {
         <Typography fontWeight={700} sx={{ mb: 1 }}>
           Create your first playlist
         </Typography>
+
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           It's easy, we'll help you.
         </Typography>
+
         <Typography fontWeight={700} sx={{ mb: 1 }}>
           Don't have an account?
         </Typography>
+
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Sign up for Spotify to create your own playlists and save your
           favourite music.
         </Typography>
+
         <Box
           component="a"
           href="https://www.spotify.com/signup/"
@@ -151,7 +175,9 @@ const Library = ({ accessToken }: LibraryProps) => {
             textDecoration: "none",
             fontWeight: 700,
             fontSize: 14,
-            "&:hover": { transform: "scale(1.03)" },
+            "&:hover": {
+              transform: "scale(1.03)",
+            },
           }}
         >
           Sign up
@@ -165,16 +191,21 @@ const Library = ({ accessToken }: LibraryProps) => {
       {playlists.map((playlist) => {
         const isSelected = selectedPlaylistId === playlist.id;
 
+        // Only display tracks when the loaded playlist matches this item.
+        const tracks =
+          selectedPlaylist?.id === playlist.id
+            ? (selectedPlaylist.items?.items ?? [])
+            : [];
+
         return (
           <Box key={playlist.id}>
-            {/* Click a playlist to expand its songs. */}
+            {/* Playlist item */}
             <Box
               component="button"
               type="button"
-              onClick={() => {
-                setSelectedPlaylistId(isSelected ? null : playlist.id);
-              }}
+              onClick={() => navigate(`/playlist/${playlist.id}`)}
               aria-expanded={isSelected}
+              aria-current={isSelected ? "page" : undefined}
               sx={{
                 display: "flex",
                 alignItems: "center",
@@ -188,12 +219,14 @@ const Library = ({ accessToken }: LibraryProps) => {
                 color: "text.primary",
                 backgroundColor: isSelected ? "action.selected" : "transparent",
                 cursor: "pointer",
-                "&:hover": { backgroundColor: "action.hover" },
+                "&:hover": {
+                  backgroundColor: "action.hover",
+                },
               }}
             >
               <Box
                 component="img"
-                src={playlist.images[0]?.url || ""}
+                src={playlist.images?.[0]?.url || ""}
                 alt=""
                 sx={{
                   width: 48,
@@ -203,20 +236,23 @@ const Library = ({ accessToken }: LibraryProps) => {
                   flexShrink: 0,
                 }}
               />
+
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Typography noWrap fontWeight={500}>
                   {playlist.name}
                 </Typography>
+
                 <Typography variant="body2" color="text.secondary" noWrap>
                   Playlist
                 </Typography>
               </Box>
+
               <Typography color="text.secondary">
                 {isSelected ? "▾" : "›"}
               </Typography>
             </Box>
 
-            {/* Songs stay in the left sidebar. */}
+            {/* Expanded tracks in the left sidebar */}
             {isSelected && (
               <Box
                 sx={{
@@ -228,7 +264,13 @@ const Library = ({ accessToken }: LibraryProps) => {
                 }}
               >
                 {isLoadingTracks && (
-                  <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      p: 2,
+                    }}
+                  >
                     <CircularProgress size={20} />
                   </Box>
                 )}
@@ -239,72 +281,103 @@ const Library = ({ accessToken }: LibraryProps) => {
                   </Typography>
                 )}
 
-                {selectedPlaylist?.id === playlist.id &&
-                  selectedPlaylist.items.items.map((entry, index) => {
-                    const track = entry.item;
-                    if (!track) return null;
+                {!isLoadingTracks &&
+                  !trackError &&
+                  selectedPlaylist?.id !== playlist.id && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ p: 1 }}
+                    >
+                      Loading tracks...
+                    </Typography>
+                  )}
 
-                    return (
+                {tracks.map((entry, index) => {
+                  const track = entry.item;
+
+                  if (!track) return null;
+
+                  return (
+                    <Box
+                      key={`${track.id}-${index}`}
+                      component="button"
+                      type="button"
+                      onClick={() => {
+                        navigate(`/playlist/${playlist.id}`, {
+                          state: { track },
+                        });
+                      }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        width: "100%",
+                        p: 1,
+                        border: 0,
+                        borderRadius: 1,
+                        textAlign: "left",
+                        font: "inherit",
+                        color: "text.primary",
+                        backgroundColor: "transparent",
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: "action.hover",
+                        },
+                      }}
+                    >
                       <Box
-                        key={`${track.id}-${index}`}
-                        component="button"
-                        type="button"
-                        onClick={() => {
-                          navigate("/playlist", {
-                            state: { track },
-                          });
-                        }}
+                        component="img"
+                        src={track.album.images?.[0]?.url || ""}
+                        alt=""
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          width: "100%",
-                          p: 1,
-                          border: 0,
-                          borderRadius: 1,
-                          textAlign: "left",
-                          color: "text.primary",
-                          backgroundColor: "transparent",
-                          cursor: "pointer",
-                          "&:hover": { backgroundColor: "action.hover" },
+                          width: 36,
+                          height: 36,
+                          objectFit: "cover",
+                          borderRadius: 0.5,
+                          flexShrink: 0,
                         }}
-                      >
-                        <Box
-                          component="img"
-                          src={track.album.images[0]?.url || ""}
-                          alt=""
-                          sx={{
-                            width: 36,
-                            height: 36,
-                            objectFit: "cover",
-                            borderRadius: 0.5,
-                            flexShrink: 0,
-                          }}
-                        />
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography variant="body2" noWrap fontWeight={500}>
-                            {track.name}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            noWrap
-                            display="block"
-                          >
-                            {track.artists
-                              .map((artist) => artist.name)
-                              .join(", ")}
-                          </Typography>
-                        </Box>
+                      />
+
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant="body2" noWrap fontWeight={500}>
+                          {track.name}
+                        </Typography>
+
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                          display="block"
+                        >
+                          {track.artists
+                            .map((artist) => artist.name)
+                            .join(", ")}
+                        </Typography>
                       </Box>
-                    );
-                  })}
+                    </Box>
+                  );
+                })}
+
+                {!isLoadingTracks &&
+                  !trackError &&
+                  selectedPlaylist?.id === playlist.id &&
+                  tracks.length === 0 && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ p: 1 }}
+                    >
+                      No tracks found.
+                    </Typography>
+                  )}
               </Box>
             )}
           </Box>
         );
       })}
 
+      {/* Infinite scroll trigger */}
       {hasMore && (
         <Box
           ref={ref}
