@@ -71,9 +71,7 @@ export default function PlaylistDetailPage() {
     } catch (err) {
       console.error("Failed to fetch playlist:", err);
       setError(
-        err instanceof Error
-          ? err.message
-          : "Could not load this playlist.",
+        err instanceof Error ? err.message : "Could not load this playlist.",
       );
     } finally {
       setIsLoading(false);
@@ -147,9 +145,7 @@ export default function PlaylistDetailPage() {
     } catch (err) {
       console.error("Track search failed:", err);
       setSearchError(
-        err instanceof Error
-          ? err.message
-          : "Could not search for tracks.",
+        err instanceof Error ? err.message : "Could not search for tracks.",
       );
       setSearchResults([]);
     } finally {
@@ -170,9 +166,16 @@ export default function PlaylistDetailPage() {
     try {
       await addItemsToPlaylist(accessToken, id, [track.uri]);
 
+      // Notify the sidebar that this playlist has changed.
+      window.dispatchEvent(
+        new CustomEvent("spotify-playlist-updated", {
+          detail: { playlistId: id },
+        }),
+      );
+
       setAddMessage(`Added "${track.name}" to "${playlist?.name}".`);
 
-      // Refresh the playlist so the new track appears in the table.
+      // Refresh the main playlist detail page.
       await fetchPlaylist();
     } catch (err) {
       console.error("Failed to add track:", err);
@@ -281,10 +284,7 @@ export default function PlaylistDetailPage() {
           </Typography>
 
           {playlist.description && (
-            <Typography
-              variant="body2"
-              sx={{ color: "#b3b3b3", mb: 1 }}
-            >
+            <Typography variant="body2" sx={{ color: "#b3b3b3", mb: 1 }}>
               {playlist.description}
             </Typography>
           )}
@@ -540,10 +540,7 @@ export default function PlaylistDetailPage() {
                         />
 
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 600 }}
-                          >
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
                             {track.name}
                           </Typography>
 
@@ -561,9 +558,7 @@ export default function PlaylistDetailPage() {
 
                     <TableCell>{track.album.name}</TableCell>
 
-                    <TableCell>
-                      {formatDuration(track.duration_ms)}
-                    </TableCell>
+                    <TableCell>{formatDuration(track.duration_ms)}</TableCell>
                   </TableRow>
                 );
               })}

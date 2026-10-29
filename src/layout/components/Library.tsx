@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import {
@@ -26,6 +27,10 @@ interface LibraryProps {
   accessToken: string | null;
 }
 
+interface PlaylistUpdatedEvent extends CustomEvent<{
+  playlistId: string;
+}> {}
+
 const Library = ({ accessToken }: LibraryProps) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [nextOffset, setNextOffset] = useState(0);
@@ -38,7 +43,6 @@ const Library = ({ accessToken }: LibraryProps) => {
   const [isLoadingTracks, setIsLoadingTracks] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
-  // Create playlist state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [newPlaylistDescription, setNewPlaylistDescription] = useState("");
@@ -54,7 +58,6 @@ const Library = ({ accessToken }: LibraryProps) => {
 
   const loadingRef = useRef(false);
 
-  // Get the selected playlist ID from the URL.
   const selectedPlaylistId =
     location.pathname.match(/^\/playlist\/([^/]+)$/)?.[1] ?? null;
 
@@ -160,7 +163,74 @@ const Library = ({ accessToken }: LibraryProps) => {
     };
   }, [accessToken, selectedPlaylistId]);
 
-  // Create a playlist in the actual Spotify account.
+  // Refresh the sidebar when a track is added.
+  useEffect(() => {
+    if (!accessToken) return;
+
+    let cancelled = false;
+
+    const handlePlaylistUpdated = (event: Event) => {
+      const customEvent = event as PlaylistUpdatedEvent;
+      const updatedPlaylistId = customEvent.detail?.playlistId;
+
+      if (!updatedPlaylistId) return;
+
+      const refreshPlaylist = async () => {
+        try {
+          const data = await getPlaylistById(
+            accessToken,
+            updatedPlaylistId,
+          );
+
+          if (cancelled) return;
+
+          // Update playlist information in the sidebar.
+          setPlaylists((previous) =>
+            previous.map((item) =>
+              item.id === data.id
+                ? {
+                    ...item,
+                    name: data.name,
+                    description: data.description,
+                    images: data.images ?? [],
+                    items: {
+                      total: data.items?.total ?? 0,
+                    },
+                  }
+                : item,
+            ),
+          );
+
+          // Refresh expanded tracks if this playlist is selected.
+          if (updatedPlaylistId === selectedPlaylistId) {
+            setSelectedPlaylist(data);
+            setTrackError(null);
+          }
+        } catch (err) {
+          if (!cancelled) {
+            console.error("Failed to refresh sidebar playlist:", err);
+          }
+        }
+      };
+
+      void refreshPlaylist();
+    };
+
+    window.addEventListener(
+      "spotify-playlist-updated",
+      handlePlaylistUpdated,
+    );
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(
+        "spotify-playlist-updated",
+        handlePlaylistUpdated,
+      );
+    };
+  }, [accessToken, selectedPlaylistId]);
+
+  // Create a playlist in Spotify.
   const handleCreatePlaylist = async () => {
     const name = newPlaylistName.trim();
 
@@ -176,7 +246,6 @@ const Library = ({ accessToken }: LibraryProps) => {
         public: false,
       });
 
-      // Insert immediately into the sidebar without reloading the list.
       setPlaylists((previous) => [
         newPlaylist,
         ...previous.filter((item) => item.id !== newPlaylist.id),
@@ -186,7 +255,6 @@ const Library = ({ accessToken }: LibraryProps) => {
       setNewPlaylistName("");
       setNewPlaylistDescription("");
 
-      // Navigate to the new playlist.
       navigate(`/playlist/${newPlaylist.id}`);
     } catch (err) {
       setCreateError(
@@ -253,7 +321,6 @@ const Library = ({ accessToken }: LibraryProps) => {
 
   return (
     <Box sx={{ mt: 1 }}>
-      {/* Your Library header and create button */}
       <LibraryHead
         onCreatePlaylist={() => {
           setNewPlaylistName("");
@@ -274,7 +341,6 @@ const Library = ({ accessToken }: LibraryProps) => {
 
         return (
           <Box key={playlist.id}>
-            {/* Playlist item */}
             <Box
               component="button"
               type="button"
@@ -319,7 +385,9 @@ const Library = ({ accessToken }: LibraryProps) => {
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary" noWrap>
-                  Playlist
+                  {playlist.items?.total != null
+                    ? `${playlist.items.total} songs`
+                    : "Playlist"}
                 </Typography>
               </Box>
 
