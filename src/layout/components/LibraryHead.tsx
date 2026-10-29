@@ -1,9 +1,13 @@
-import React from 'react';
+
 import { Box, Typography, IconButton } from '@mui/material';
 import LibraryMusicIcon from '@mui/icons-material/LibraryMusic';
 import AddIcon from '@mui/icons-material/Add';
 
-const LibraryHead = () => {
+interface LibraryHeadProps {
+  onCreatePlaylist: () => void;
+}
+
+const LibraryHead = ({ onCreatePlaylist }: LibraryHeadProps) => {
   return (
     <Box
       sx={{
@@ -20,7 +24,10 @@ const LibraryHead = () => {
         </Typography>
       </Box>
 
-      <IconButton aria-label="Create playlist">
+      <IconButton
+        aria-label="Create playlist"
+        onClick={onCreatePlaylist}
+      >
         <AddIcon />
       </IconButton>
     </Box>

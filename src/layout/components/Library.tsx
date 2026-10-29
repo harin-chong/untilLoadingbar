@@ -1,8 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
-import { Box, CircularProgress, Typography } from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom";
 import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useLocation, useNavigate } from "react-router-dom";
+import LibraryHead from "./LibraryHead";
+import {
+  createPlaylist,
   getMyPlaylists,
   getPlaylistById,
   type Playlist,
@@ -25,6 +38,13 @@ const Library = ({ accessToken }: LibraryProps) => {
   const [isLoadingTracks, setIsLoadingTracks] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
+  // Create playlist state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [newPlaylistDescription, setNewPlaylistDescription] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,11 +54,11 @@ const Library = ({ accessToken }: LibraryProps) => {
 
   const loadingRef = useRef(false);
 
-  // Get the selected playlist ID from the current URL.
+  // Get the selected playlist ID from the URL.
   const selectedPlaylistId =
     location.pathname.match(/^\/playlist\/([^/]+)$/)?.[1] ?? null;
 
-  // Reset the playlist list when the access token changes.
+  // Reset the list when the access token changes.
   useEffect(() => {
     setPlaylists([]);
     setNextOffset(0);
@@ -65,7 +85,15 @@ const Library = ({ accessToken }: LibraryProps) => {
 
         if (cancelled) return;
 
-        setPlaylists((previous) => [...previous, ...page.items]);
+        setPlaylists((previous) => {
+          const existingIds = new Set(previous.map((item) => item.id));
+
+          return [
+            ...previous,
+            ...page.items.filter((item) => !existingIds.has(item.id)),
+          ];
+        });
+
         setNextOffset(page.nextOffset);
         setHasMore(page.hasMore);
       } catch (err) {
@@ -132,6 +160,43 @@ const Library = ({ accessToken }: LibraryProps) => {
     };
   }, [accessToken, selectedPlaylistId]);
 
+  // Create a playlist in the actual Spotify account.
+  const handleCreatePlaylist = async () => {
+    const name = newPlaylistName.trim();
+
+    if (!accessToken || !name || isCreating) return;
+
+    setIsCreating(true);
+    setCreateError(null);
+
+    try {
+      const newPlaylist = await createPlaylist(accessToken, {
+        name,
+        description: newPlaylistDescription.trim(),
+        public: false,
+      });
+
+      // Insert immediately into the sidebar without reloading the list.
+      setPlaylists((previous) => [
+        newPlaylist,
+        ...previous.filter((item) => item.id !== newPlaylist.id),
+      ]);
+
+      setCreateDialogOpen(false);
+      setNewPlaylistName("");
+      setNewPlaylistDescription("");
+
+      // Navigate to the new playlist.
+      navigate(`/playlist/${newPlaylist.id}`);
+    } catch (err) {
+      setCreateError(
+        err instanceof Error ? err.message : "Failed to create playlist.",
+      );
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   // Login prompt.
   if (!accessToken) {
     return (
@@ -188,10 +253,20 @@ const Library = ({ accessToken }: LibraryProps) => {
 
   return (
     <Box sx={{ mt: 1 }}>
+      {/* Your Library header and create button */}
+      <LibraryHead
+        onCreatePlaylist={() => {
+          setNewPlaylistName("");
+          setNewPlaylistDescription("");
+          setCreateError(null);
+          setCreateDialogOpen(true);
+        }}
+      />
+
+      {/* Playlist list */}
       {playlists.map((playlist) => {
         const isSelected = selectedPlaylistId === playlist.id;
 
-        // Only display tracks when the loaded playlist matches this item.
         const tracks =
           selectedPlaylist?.id === playlist.id
             ? (selectedPlaylist.items?.items ?? [])
@@ -234,6 +309,7 @@ const Library = ({ accessToken }: LibraryProps) => {
                   borderRadius: 1,
                   objectFit: "cover",
                   flexShrink: 0,
+                  backgroundColor: "action.hover",
                 }}
               />
 
@@ -252,7 +328,7 @@ const Library = ({ accessToken }: LibraryProps) => {
               </Typography>
             </Box>
 
-            {/* Expanded tracks in the left sidebar */}
+            {/* Expanded tracks */}
             {isSelected && (
               <Box
                 sx={{
@@ -377,19 +453,23 @@ const Library = ({ accessToken }: LibraryProps) => {
         );
       })}
 
-      {/* Infinite scroll trigger */}
-      {hasMore && (
+      {/* Loading and errors */}
+      {isLoading && (
         <Box
-          ref={ref}
           sx={{
             display: "flex",
             justifyContent: "center",
             p: 2,
-            minHeight: 24,
           }}
         >
-          {isLoading && <CircularProgress size={24} />}
+          <CircularProgress size={24} />
         </Box>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mx: 1, my: 1 }}>
+          {error}
+        </Alert>
       )}
 
       {!isLoading && !error && playlists.length === 0 && !hasMore && (
@@ -398,11 +478,99 @@ const Library = ({ accessToken }: LibraryProps) => {
         </Typography>
       )}
 
-      {error && (
-        <Typography sx={{ p: 2 }} color="error">
-          {error}
-        </Typography>
+      {/* Infinite scroll trigger */}
+      {hasMore && (
+        <Box
+          ref={ref}
+          sx={{
+            minHeight: 24,
+            display: "flex",
+            justifyContent: "center",
+            p: 1,
+          }}
+        />
       )}
+
+      {/* Create playlist dialog */}
+      <Dialog
+        open={createDialogOpen}
+        onClose={() => {
+          if (!isCreating) {
+            setCreateDialogOpen(false);
+          }
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Create a playlist</DialogTitle>
+
+        <DialogContent>
+          <TextField
+            autoFocus
+            required
+            fullWidth
+            margin="normal"
+            label="Playlist name"
+            placeholder="My playlist"
+            value={newPlaylistName}
+            onChange={(event) => setNewPlaylistName(event.target.value)}
+            slotProps={{
+              htmlInput: { maxLength: 100 },
+            }}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                newPlaylistName.trim() &&
+                !isCreating
+              ) {
+                event.preventDefault();
+                void handleCreatePlaylist();
+              }
+            }}
+          />
+
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Description (optional)"
+            placeholder="Add a description"
+            value={newPlaylistDescription}
+            onChange={(event) => setNewPlaylistDescription(event.target.value)}
+            multiline
+            minRows={2}
+            slotProps={{
+              htmlInput: { maxLength: 300 },
+            }}
+          />
+
+          {createError && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {createError}
+            </Alert>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setCreateDialogOpen(false)}
+            disabled={isCreating}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={() => void handleCreatePlaylist()}
+            disabled={!newPlaylistName.trim() || isCreating}
+          >
+            {isCreating ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              "Create"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

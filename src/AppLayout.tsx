@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Box, Typography, styled } from "@mui/material";
@@ -7,7 +6,6 @@ import SearchIcon from "@mui/icons-material/Search";
 
 import Library from "./layout/components/Library";
 import Profile from "./common/component/Profile";
-import LibraryHead from "./layout/components/LibraryHead";
 import Navbar from "./layout/components/Navbar";
 import { useExchangeToken } from "./hooks/useExchangeToken";
 
@@ -165,14 +163,6 @@ const AppLayout = () => {
 
         {/* Library panel */}
         <LibraryPanel>
-          <NavList>
-            <li>
-              <StyledNavLink to="/playlist">
-                <LibraryHead />
-              </StyledNavLink>
-            </li>
-          </NavList>
-
           <Library accessToken={accessToken} />
         </LibraryPanel>
       </Sidebar>

@@ -11,7 +11,7 @@ let tokenExpiresAt = 0;
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// 로컬 개발 및 Vercel 프론트엔드 허용
+// Allowed frontend origins
 const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
@@ -22,12 +22,11 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // origin이 없는 요청도 허용 (예: 직접 API 접속)
+      // Allow requests without an Origin header, such as direct API tests.
       if (!origin) {
         return callback(null, true);
       }
 
-      // 정식 도메인 또는 Vercel Preview 도메인 허용
       const isAllowed =
         allowedOrigins.includes(origin) ||
         /^https:\/\/until-loadingbar-wbz7-[a-z0-9]+-lovedubus-projects\.vercel\.app$/.test(
@@ -43,7 +42,9 @@ app.use(
   })
 );
 
-// Spotify access token 발급 및 캐싱
+app.use(express.json());
+
+// Get and cache Spotify Client Credentials access token
 async function getSpotifyToken() {
   if (cachedToken && Date.now() < tokenExpiresAt) {
     return cachedToken;
@@ -72,7 +73,7 @@ async function getSpotifyToken() {
   return cachedToken;
 }
 
-// 앨범 데이터 가져오기
+// Get album releases
 app.get("/api/new-releases", async (req, res) => {
   try {
     const token = await getSpotifyToken();
@@ -101,7 +102,7 @@ app.get("/api/new-releases", async (req, res) => {
     res.json(albums);
   } catch (error) {
     console.error(
-      "Spotify API error:",
+      "Spotify album API error:",
       error.response?.status,
       error.response?.data || error.message
     );
@@ -110,6 +111,55 @@ app.get("/api/new-releases", async (req, res) => {
       message: "Failed to fetch albums",
     });
   }
+});
+
+// Search tracks without requiring Spotify user login
+app.get("/api/search", async (req, res) => {
+  try {
+    const query = String(req.query.q || "").trim();
+
+    if (!query) {
+      return res.status(400).json({
+        message: "Search query is required",
+      });
+    }
+
+    const token = await getSpotifyToken();
+
+    const response = await axios.get(
+      "https://api.spotify.com/v1/search",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          q: query,
+          type: "track",
+          limit: 10,
+        },
+      }
+    );
+
+    // Returns { items: [...] } for playlistApi.ts
+    res.json(response.data.tracks);
+  } catch (error) {
+    console.error(
+      "Spotify track search error:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
+
+    res.status(error.response?.status || 500).json({
+      message:
+        error.response?.data?.error?.message ||
+        "Failed to search tracks",
+    });
+  }
+});
+
+// Health check
+app.get("/", (req, res) => {
+  res.send("Spotify API server is running");
 });
 
 app.listen(PORT, () => {

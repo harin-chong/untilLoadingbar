@@ -14,6 +14,8 @@ const SCOPES = [
   "user-read-email",
   "playlist-read-private",
   "playlist-read-collaborative",
+  "playlist-modify-private",
+  "playlist-modify-public",
 ];
 
 const sha256 = async (plain: string): Promise<ArrayBuffer> => {
