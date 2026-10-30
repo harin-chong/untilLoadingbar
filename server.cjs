@@ -5,11 +5,11 @@ const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 
-let cachedToken = null;
-let tokenExpiresAt = 0;
-
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+let cachedToken = null;
+let tokenExpiresAt = 0;
 
 // Allowed frontend origins
 const allowedOrigins = [
@@ -22,7 +22,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests without an Origin header, such as direct API tests.
+      // Allow requests without an Origin header
       if (!origin) {
         return callback(null, true);
       }
@@ -44,7 +44,10 @@ app.use(
 
 app.use(express.json());
 
-// Get and cache Spotify Client Credentials access token
+// ========================================
+// Spotify Client Credentials Token
+// ========================================
+
 async function getSpotifyToken() {
   if (cachedToken && Date.now() < tokenExpiresAt) {
     return cachedToken;
@@ -67,13 +70,17 @@ async function getSpotifyToken() {
   );
 
   cachedToken = response.data.access_token;
+
   tokenExpiresAt =
     Date.now() + response.data.expires_in * 1000 - 60000;
 
   return cachedToken;
 }
 
-// Get album releases
+// ========================================
+// Get New Releases
+// ========================================
+
 app.get("/api/new-releases", async (req, res) => {
   try {
     const token = await getSpotifyToken();
@@ -107,13 +114,18 @@ app.get("/api/new-releases", async (req, res) => {
       error.response?.data || error.message
     );
 
-    res.status(500).json({
-      message: "Failed to fetch albums",
+    res.status(error.response?.status || 500).json({
+      message:
+        error.response?.data?.error?.message ||
+        "Failed to fetch albums",
     });
   }
 });
 
-// Search tracks without requiring Spotify user login
+// ========================================
+// Search Tracks
+// ========================================
+
 app.get("/api/search", async (req, res) => {
   try {
     const query = String(req.query.q || "").trim();
@@ -140,7 +152,7 @@ app.get("/api/search", async (req, res) => {
       }
     );
 
-    // Returns { items: [...] } for playlistApi.ts
+    // Returns { items: [...] }
     res.json(response.data.tracks);
   } catch (error) {
     console.error(
@@ -157,10 +169,51 @@ app.get("/api/search", async (req, res) => {
   }
 });
 
-// Health check
+// ========================================
+// Get Album Details and Tracks
+// ========================================
+
+app.get("/api/albums/:id", async (req, res) => {
+  try {
+    const albumId = req.params.id;
+    const token = await getSpotifyToken();
+
+    const response = await axios.get(
+      `https://api.spotify.com/v1/albums/${albumId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error(
+      "Spotify album detail error:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
+
+    res.status(error.response?.status || 500).json({
+      message:
+        error.response?.data?.error?.message ||
+        "Failed to fetch album details",
+    });
+  }
+});
+
+// ========================================
+// Health Check
+// ========================================
+
 app.get("/", (req, res) => {
   res.send("Spotify API server is running");
 });
+
+// ========================================
+// Start Server
+// ========================================
 
 app.listen(PORT, () => {
   console.log(`Spotify API server running on port ${PORT}`);

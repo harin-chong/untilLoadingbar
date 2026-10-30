@@ -1,10 +1,8 @@
-
 import axios from "axios";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
-console.log("API_BASE_URL:", API_BASE_URL);
-
+// Get new releases
 export const getNewReleases = async () => {
   if (!API_BASE_URL) {
     throw new Error("REACT_APP_API_URL is missing");
@@ -12,6 +10,19 @@ export const getNewReleases = async () => {
 
   const response = await axios.get(
     `${API_BASE_URL}/api/new-releases`
+  );
+
+  return response.data;
+};
+
+// Get album details
+export const getAlbumById = async (albumId: string) => {
+  if (!API_BASE_URL) {
+    throw new Error("REACT_APP_API_URL is missing");
+  }
+
+  const response = await axios.get(
+    `${API_BASE_URL}/api/albums/${albumId}`
   );
 
   return response.data;
