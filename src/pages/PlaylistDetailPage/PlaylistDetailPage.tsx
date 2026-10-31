@@ -283,12 +283,6 @@ export default function PlaylistDetailPage() {
             {playlist.name}
           </Typography>
 
-          {playlist.description && (
-            <Typography variant="body2" sx={{ color: "#b3b3b3", mb: 1 }}>
-              {playlist.description}
-            </Typography>
-          )}
-
           <Typography variant="body2" sx={{ color: "#b3b3b3" }}>
             {playlist.owner?.display_name ?? "Spotify user"}
             {" · "}

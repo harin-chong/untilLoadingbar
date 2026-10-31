@@ -218,3 +218,106 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Spotify API server running on port ${PORT}`);
 });
+// ========================================
+// Get Popular Tracks
+// ========================================
+
+app.get("/api/top-tracks", async (req, res) => {
+  try {
+    const token = await getSpotifyToken();
+
+    const response = await axios.get(
+      "https://api.spotify.com/v1/search",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          q: "year:2026",
+          type: "track",
+          limit: 10,
+          market: "GB",
+        },
+      }
+    );
+
+    const tracks = response.data.tracks.items;
+
+    // Sort by popularity
+    const popularTracks = tracks.sort(
+      (a, b) => b.popularity - a.popularity
+    );
+
+    res.json(popularTracks);
+  } catch (error) {
+    console.error(
+      "Spotify popular tracks error:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
+
+    res.status(error.response?.status || 500).json({
+      message:
+        error.response?.data?.error?.message ||
+        "Failed to fetch popular tracks",
+    });
+  }
+});
+// ========================================
+// Get Recommended Albums
+// ========================================
+
+app.get("/api/recommended-albums", async (req, res) => {
+  try {
+    const token = await getSpotifyToken();
+
+    const queries = [
+      "pop",
+      "indie",
+      "r&b",
+      "rock",
+      "hip hop",
+    ];
+
+    const responses = await Promise.all(
+      queries.map((query) =>
+        axios.get("https://api.spotify.com/v1/search", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            q: query,
+            type: "album",
+            limit: 5,
+            market: "GB",
+          },
+        })
+      )
+    );
+
+    const albums = responses.flatMap(
+      (response) => response.data.albums.items
+    );
+
+    // Remove duplicated albums
+    const uniqueAlbums = [
+      ...new Map(
+        albums.map((album) => [album.id, album])
+      ).values(),
+    ];
+
+    res.json(uniqueAlbums.slice(0, 10));
+  } catch (error) {
+    console.error(
+      "Spotify recommended albums error:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
+
+    res.status(error.response?.status || 500).json({
+      message:
+        error.response?.data?.error?.message ||
+        "Failed to fetch recommended albums",
+    });
+  }
+});

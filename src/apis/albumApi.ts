@@ -27,3 +27,27 @@ export const getAlbumById = async (albumId: string) => {
 
   return response.data;
 };
+
+export const getPopularTracks = async () => {
+  if (!API_BASE_URL) {
+    throw new Error("REACT_APP_API_URL is missing");
+  }
+
+  const response = await axios.get(
+    `${API_BASE_URL}/api/top-tracks`
+  );
+
+  return response.data;
+};
+
+export const getRecommendedAlbums = async () => {
+  if (!API_BASE_URL) {
+    throw new Error("REACT_APP_API_URL is missing");
+  }
+
+  const response = await axios.get(
+    `${API_BASE_URL}/api/recommended-albums`
+  );
+
+  return response.data;
+};

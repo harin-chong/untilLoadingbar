@@ -1,4 +1,9 @@
+
 const API_BASE_URL = "https://spotify-yic0.onrender.com";
+
+// ------------------------------
+// Playlist types
+// ------------------------------
 
 export interface Playlist {
   id: string;
@@ -26,6 +31,10 @@ export interface PlaylistPage {
   hasMore: boolean;
 }
 
+// ------------------------------
+// Get current user's playlists
+// ------------------------------
+
 export const getMyPlaylists = async (
   accessToken: string,
   offset = 0,
@@ -46,7 +55,9 @@ export const getMyPlaylists = async (
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch playlists: ${response.status}`);
+    throw new Error(
+      `Failed to fetch playlists: ${response.status}`,
+    );
   }
 
   const data: PlaylistResponse = await response.json();
@@ -58,8 +69,13 @@ export const getMyPlaylists = async (
   };
 };
 
+// ------------------------------
+// Playlist track types
+// ------------------------------
+
 export interface PlaylistTrack {
   added_at?: string | null;
+
   item: {
     id: string;
     uri?: string;
@@ -80,6 +96,10 @@ export interface PlaylistTrack {
   } | null;
 }
 
+// ------------------------------
+// Playlist detail types
+// ------------------------------
+
 export interface PlaylistDetail {
   id: string;
   name: string;
@@ -98,6 +118,16 @@ export interface PlaylistDetail {
   };
 }
 
+// Raw response from Spotify API
+interface PlaylistDetailResponse
+  extends Omit<PlaylistDetail, "description"> {
+  description?: string | null;
+}
+
+// ------------------------------
+// Get playlist by ID
+// ------------------------------
+
 export const getPlaylistById = async (
   accessToken: string,
   playlistId: string,
@@ -113,13 +143,30 @@ export const getPlaylistById = async (
 
   if (!response.ok) {
     const message = await response.text();
+
     throw new Error(
       `Failed to fetch playlist: ${response.status} ${message}`,
     );
   }
 
-  return (await response.json()) as PlaylistDetail;
+  const data: PlaylistDetailResponse = await response.json();
+
+  // Normalise the description
+  const description =
+    typeof data.description === "string" &&
+    data.description.trim().toLowerCase() !== "null"
+      ? data.description.trim()
+      : "";
+
+  return {
+    ...data,
+    description,
+  };
 };
+
+// ------------------------------
+// Create playlist
+// ------------------------------
 
 export interface CreatePlaylistInput {
   name: string;
@@ -149,6 +196,7 @@ export const createPlaylist = async (
 
   if (!response.ok) {
     const message = await response.text();
+
     throw new Error(
       `Failed to create playlist: ${response.status} ${message}`,
     );
@@ -159,7 +207,11 @@ export const createPlaylist = async (
   return {
     id: data.id,
     name: data.name,
-    description: data.description ?? "",
+    description:
+      typeof data.description === "string" &&
+      data.description.toLowerCase() !== "null"
+        ? data.description
+        : "",
     images: data.images ?? [],
     items: {
       total: 0,
@@ -167,10 +219,16 @@ export const createPlaylist = async (
   };
 };
 
+// ------------------------------
+// Add tracks to playlist
+// ------------------------------
+
 /**
  * Add tracks to an existing Spotify playlist.
- * Each URI must look like: spotify:track:TRACK_ID
+ * Each URI must look like:
+ * spotify:track:TRACK_ID
  */
+
 export const addItemsToPlaylist = async (
   accessToken: string,
   playlistId: string,
@@ -202,6 +260,10 @@ export const addItemsToPlaylist = async (
   }
 };
 
+// ------------------------------
+// Search track types
+// ------------------------------
+
 export interface SearchTrack {
   id: string;
   uri: string;
@@ -228,10 +290,15 @@ interface TrackSearchResponse {
   };
 }
 
+// ------------------------------
+// Search Spotify tracks
+// ------------------------------
+
 /**
  * Search Spotify's public catalogue through the backend.
  * The backend should expose GET /api/search?q=...
  */
+
 export const searchTracks = async (
   query: string,
 ): Promise<SearchTrack[]> => {
@@ -244,11 +311,16 @@ export const searchTracks = async (
   );
 
   if (!response.ok) {
-    throw new Error(`Track search failed: ${response.status}`);
+    throw new Error(
+      `Track search failed: ${response.status}`,
+    );
   }
 
   const data: TrackSearchResponse = await response.json();
 
-  // Supports either { items: [...] } or { tracks: { items: [...] } }
+  // Supports either:
+  // { items: [...] }
+  // or { tracks: { items: [...] } }
+
   return data.items ?? data.tracks?.items ?? [];
 };
