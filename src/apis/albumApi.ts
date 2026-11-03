@@ -51,3 +51,23 @@ export const getRecommendedAlbums = async () => {
 
   return response.data;
 };
+
+// Search tracks, artists and albums
+export const searchAll = async (keyword: string) => {
+  if (!API_BASE_URL) {
+    throw new Error("REACT_APP_API_URL is missing");
+  }
+
+  const response = await axios.get(
+    `${API_BASE_URL}/api/search`,
+    {
+      params: {
+        q: keyword,
+        type: "track,artist,album",
+      },
+    }
+  );
+
+  return response.data;
+};
+

@@ -122,52 +122,6 @@ app.get("/api/new-releases", async (req, res) => {
   }
 });
 
-// ========================================
-// Search Tracks
-// ========================================
-
-app.get("/api/search", async (req, res) => {
-  try {
-    const query = String(req.query.q || "").trim();
-
-    if (!query) {
-      return res.status(400).json({
-        message: "Search query is required",
-      });
-    }
-
-    const token = await getSpotifyToken();
-
-    const response = await axios.get(
-      "https://api.spotify.com/v1/search",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
-          q: query,
-          type: "track",
-          limit: 10,
-        },
-      }
-    );
-
-    // Returns { items: [...] }
-    res.json(response.data.tracks);
-  } catch (error) {
-    console.error(
-      "Spotify track search error:",
-      error.response?.status,
-      error.response?.data || error.message
-    );
-
-    res.status(error.response?.status || 500).json({
-      message:
-        error.response?.data?.error?.message ||
-        "Failed to search tracks",
-    });
-  }
-});
 
 // ========================================
 // Get Album Details and Tracks
@@ -318,6 +272,53 @@ app.get("/api/recommended-albums", async (req, res) => {
       message:
         error.response?.data?.error?.message ||
         "Failed to fetch recommended albums",
+    });
+  }
+});
+
+// ========================================
+// Search Tracks, Artists and Albums
+// ========================================
+
+app.get("/api/search", async (req, res) => {
+  try {
+    const query = String(req.query.q || "").trim();
+
+    if (!query) {
+      return res.status(400).json({
+        message: "Search query is required",
+      });
+    }
+
+    const token = await getSpotifyToken();
+
+    const response = await axios.get(
+      "https://api.spotify.com/v1/search",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          q: query,
+          type: "track,artist,album",
+          limit: 10,
+          market: "GB",
+        },
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error(
+      "Spotify search error:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
+
+    res.status(error.response?.status || 500).json({
+      message:
+        error.response?.data?.error?.message ||
+        "Failed to search Spotify",
     });
   }
 });

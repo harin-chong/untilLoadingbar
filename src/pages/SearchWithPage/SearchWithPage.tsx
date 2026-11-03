@@ -1,201 +1,248 @@
 import { useEffect, useState } from "react";
-import { useOutletContext, useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
-  Alert,
   Box,
-  CircularProgress,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 
-interface OutletContext {
-  accessToken: string | null;
-}
-
-interface SpotifyTrack {
-  id: string;
-  name: string;
-  uri: string;
-  duration_ms: number;
-  artists: { id: string; name: string }[];
-  album: {
-    name: string;
-    images: { url: string; width: number | null; height: number | null }[];
-  };
-}
-
-interface SpotifySearchResponse {
-  tracks: {
-    items: SpotifyTrack[];
-  };
-}
-
-const formatDuration = (durationMs: number) => {
-  const totalSeconds = Math.floor(durationMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-};
+import { searchAll } from "../../apis/albumApi";
 
 const SearchWithPage = () => {
-  const { keyword = "" } = useParams<{ keyword: string }>();
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { keyword } = useParams();
+  const navigate = useNavigate();
 
-  const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
+  const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!accessToken || !keyword) {
-      setTracks([]);
-      return;
-    }
+    if (!keyword) return;
 
-    const controller = new AbortController();
-
-    const searchTracks = async () => {
-      setLoading(true);
-      setError(null);
-
+    const fetchResults = async () => {
       try {
-        const params = new URLSearchParams({
-          q: keyword,
-          type: "track",
-          limit: "10",
-        });
+        setLoading(true);
+        setResults(null);
 
-        const response = await fetch(
-          `https://api.spotify.com/v1/search?${params.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-            signal: controller.signal,
-          },
-        );
-
-        const responseData = await response.json();
-
-        if (!response.ok) {
-          console.error("Spotify error message:", responseData.error?.message);
-
-          console.error(
-            "Spotify full error:",
-            JSON.stringify(responseData, null, 2),
-          );
-
-          throw new Error(
-            responseData.error?.message ??
-              `Spotify API request failed (${response.status})`,
-          );
-        }
-        const data: SpotifySearchResponse = responseData;
-        setTracks(data.tracks.items);
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          return;
-        }
-
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        const data = await searchAll(keyword);
+        setResults(data);
+      } catch (error) {
+        console.error("Search failed:", error);
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
-    void searchTracks();
+    fetchResults();
+  }, [keyword]);
 
-    return () => controller.abort();
-  }, [accessToken, keyword]);
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", p: 5 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!results) return null;
+
+  const tracks = results.tracks?.items || [];
+  const artists = results.artists?.items || [];
+  const albums = results.albums?.items || [];
+
+  const hasResults =
+    tracks.length > 0 ||
+    artists.length > 0 ||
+    albums.length > 0;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, color: "white" }}>
-      <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
+
+      <Typography variant="h4" fontWeight={700} mb={4}>
         Search results
       </Typography>
 
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Results for "{keyword}"
-      </Typography>
-
-      {!accessToken && (
-        <Alert severity="info">Log in to Spotify to search for tracks.</Alert>
+      {!hasResults && (
+        <Typography color="gray">
+          No results found for "{keyword}"
+        </Typography>
       )}
 
-      {loading && (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
-          <CircularProgress />
+      {/* Tracks */}
+      {tracks.length > 0 && (
+        <Box sx={{ mb: 5 }}>
+          <Typography variant="h5" fontWeight={700} mb={2}>
+            Tracks
+          </Typography>
+
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {tracks.map((track: any) => (
+              <Box
+                key={track.id}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  p: 1,
+                  borderRadius: 2,
+                  "&:hover": {
+                    backgroundColor: "#282828",
+                  },
+                }}
+              >
+                <Box
+                  component="img"
+                  src={track.album.images?.[0]?.url}
+                  alt={track.name}
+                  sx={{
+                    width: 55,
+                    height: 55,
+                    objectFit: "cover",
+                    borderRadius: 1,
+                  }}
+                />
+
+                <Box>
+                  <Typography fontWeight={600}>
+                    {track.name}
+                  </Typography>
+
+                  <Typography variant="body2" color="gray">
+                    {track.artists
+                      .map((artist: any) => artist.name)
+                      .join(", ")}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
         </Box>
       )}
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {/* Artists */}
+      {artists.length > 0 && (
+        <Box sx={{ mb: 5 }}>
+          <Typography variant="h5" fontWeight={700} mb={2}>
+            Artists
+          </Typography>
 
-      {!loading && !error && accessToken && tracks.length === 0 && (
-        <Typography color="text.secondary">No tracks found.</Typography>
-      )}
-
-      {!loading && tracks.length > 0 && (
-        <List>
-          {tracks.map((track) => (
-            <ListItem
-              key={track.id}
-              sx={{
-                borderRadius: 1,
-                "&:hover": {
-                  backgroundColor: "rgba(255,255,255,0.08)",
-                },
-              }}
-            >
-              <ListItemAvatar>
-                <Avatar
-                  variant="rounded"
-                  src={track.album.images[track.album.images.length - 1]?.url}
-                  alt={track.album.name}
-                  sx={{ width: 48, height: 48, mr: 1 }}
-                />
-              </ListItemAvatar>
-
-              <ListItemText
-                primary={track.name}
-                secondary={`${track.artists
-                  .map((artist) => artist.name)
-                  .join(", ")} · ${track.album.name}`}
-                slotProps={{
-                  primary: {
-                    sx: {
-                      color: "white",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    },
-                  },
-                  secondary: {
-                    sx: {
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    },
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, 1fr)",
+                sm: "repeat(3, 1fr)",
+                md: "repeat(5, 1fr)",
+              },
+              gap: 2,
+            }}
+          >
+            {artists.map((artist: any) => (
+              <Box
+                key={artist.id}
+                onClick={() =>
+                  window.open(
+                    artist.external_urls.spotify,
+                    "_blank"
+                  )
+                }
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  "&:hover": {
+                    backgroundColor: "#282828",
                   },
                 }}
-              />
-
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ ml: 2, flexShrink: 0 }}
               >
-                {formatDuration(track.duration_ms)}
-              </Typography>
-            </ListItem>
-          ))}
-        </List>
+                <Box
+                  component="img"
+                  src={artist.images?.[0]?.url}
+                  alt={artist.name}
+                  sx={{
+                    width: "100%",
+                    aspectRatio: "1",
+                    objectFit: "cover",
+                    borderRadius: "50%",
+                    mb: 1,
+                  }}
+                />
+
+                <Typography fontWeight={600}>
+                  {artist.name}
+                </Typography>
+
+                <Typography variant="body2" color="gray">
+                  Artist
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
       )}
+
+      {/* Albums */}
+      {albums.length > 0 && (
+        <Box sx={{ mb: 5 }}>
+          <Typography variant="h5" fontWeight={700} mb={2}>
+            Albums
+          </Typography>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, 1fr)",
+                sm: "repeat(3, 1fr)",
+                md: "repeat(5, 1fr)",
+              },
+              gap: 2,
+            }}
+          >
+            {albums.map((album: any) => (
+              <Box
+                key={album.id}
+                onClick={() => navigate(`/album/${album.id}`)}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  "&:hover": {
+                    backgroundColor: "#282828",
+                  },
+                }}
+              >
+                <Box
+                  component="img"
+                  src={album.images?.[0]?.url}
+                  alt={album.name}
+                  sx={{
+                    width: "100%",
+                    aspectRatio: "1",
+                    objectFit: "cover",
+                    borderRadius: 1,
+                    mb: 1,
+                  }}
+                />
+
+                <Typography fontWeight={600}>
+                  {album.name}
+                </Typography>
+
+                <Typography variant="body2" color="gray">
+                  {album.artists
+                    .map((artist: any) => artist.name)
+                    .join(", ")}
+                </Typography>
+
+                <Typography variant="body2" color="gray">
+                  {album.release_date?.slice(0, 4)} · Album
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+
     </Box>
   );
 };
