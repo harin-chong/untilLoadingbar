@@ -1,20 +1,57 @@
+
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+
 import {
   Box,
   Typography,
   CircularProgress,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  List,
+  ListItemButton,
+  ListItemText,
+  Button,
 } from "@mui/material";
 
+import AddIcon from "@mui/icons-material/Add";
+
 import { searchAll } from "../../apis/albumApi";
+import {
+  getMyPlaylists,
+  addItemsToPlaylist,
+} from "../../apis/playlistApi";
+
+interface Playlist {
+  id: string;
+  name: string;
+  images?: { url: string }[];
+}
+
+interface OutletContext {
+  accessToken: string | null;
+}
 
 const SearchWithPage = () => {
   const { keyword } = useParams();
   const navigate = useNavigate();
 
+  const { accessToken } = useOutletContext<OutletContext>();
+
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
+  // Playlist dialog states
+  const [openPlaylistDialog, setOpenPlaylistDialog] = useState(false);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [selectedTrack, setSelectedTrack] = useState<any>(null);
+  const [loadingPlaylists, setLoadingPlaylists] = useState(false);
+  const [addingTrack, setAddingTrack] = useState(false);
+  const [message, setMessage] = useState("");
+
+  // Search
   useEffect(() => {
     if (!keyword) return;
 
@@ -34,6 +71,57 @@ const SearchWithPage = () => {
 
     fetchResults();
   }, [keyword]);
+
+  // Open playlist dialog
+  const handleOpenPlaylistDialog = async (track: any) => {
+    if (!accessToken) {
+      setMessage("Please log in first.");
+      return;
+    }
+
+    setSelectedTrack(track);
+    setOpenPlaylistDialog(true);
+    setLoadingPlaylists(true);
+    setMessage("");
+
+    try {
+      const data = await getMyPlaylists(accessToken);
+      setPlaylists(data.items);
+    } catch (error) {
+      console.error("Failed to fetch playlists:", error);
+      setMessage("Failed to load playlists.");
+    } finally {
+      setLoadingPlaylists(false);
+    }
+  };
+
+  // Add track to selected playlist
+  const handleAddTrack = async (playlistId: string) => {
+    if (!accessToken || !selectedTrack) return;
+
+    try {
+      setAddingTrack(true);
+
+      await addItemsToPlaylist(
+        accessToken,
+        playlistId,
+        [selectedTrack.uri]
+      );
+
+      setMessage("Track added successfully!");
+
+      setTimeout(() => {
+        setOpenPlaylistDialog(false);
+        setSelectedTrack(null);
+        setMessage("");
+      }, 1000);
+    } catch (error) {
+      console.error("Failed to add track:", error);
+      setMessage("Failed to add track. Please try again.");
+    } finally {
+      setAddingTrack(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -101,17 +189,32 @@ const SearchWithPage = () => {
                   }}
                 />
 
-                <Box>
-                  <Typography fontWeight={600}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography fontWeight={600} noWrap>
                     {track.name}
                   </Typography>
 
-                  <Typography variant="body2" color="gray">
+                  <Typography variant="body2" color="gray" noWrap>
                     {track.artists
                       .map((artist: any) => artist.name)
                       .join(", ")}
                   </Typography>
                 </Box>
+
+                {/* Add to playlist button */}
+                <IconButton
+                  onClick={() => handleOpenPlaylistDialog(track)}
+                  sx={{
+                    color: "white",
+                    "&:hover": {
+                      color: "#1DB954",
+                      backgroundColor: "#333",
+                    },
+                  }}
+                  aria-label={`Add ${track.name} to playlist`}
+                >
+                  <AddIcon />
+                </IconButton>
               </Box>
             ))}
           </Box>
@@ -140,10 +243,7 @@ const SearchWithPage = () => {
               <Box
                 key={artist.id}
                 onClick={() =>
-                  window.open(
-                    artist.external_urls.spotify,
-                    "_blank"
-                  )
+                  window.open(artist.external_urls.spotify, "_blank")
                 }
                 sx={{
                   p: 2,
@@ -243,6 +343,103 @@ const SearchWithPage = () => {
         </Box>
       )}
 
+      {/* Playlist selection dialog */}
+      <Dialog
+        open={openPlaylistDialog}
+        onClose={() => {
+          if (!addingTrack) {
+            setOpenPlaylistDialog(false);
+            setMessage("");
+          }
+        }}
+        PaperProps={{
+          sx: {
+            backgroundColor: "#282828",
+            color: "white",
+            width: "100%",
+            maxWidth: 400,
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle fontWeight={700}>
+          Add to playlist
+        </DialogTitle>
+
+        <DialogContent>
+          {selectedTrack && (
+            <Typography color="gray" variant="body2" mb={2}>
+              {selectedTrack.name}
+            </Typography>
+          )}
+
+          {loadingPlaylists ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <List>
+              {playlists.map((playlist) => (
+                <ListItemButton
+                  key={playlist.id}
+                  onClick={() => handleAddTrack(playlist.id)}
+                  disabled={addingTrack}
+                  sx={{
+                    borderRadius: 2,
+                    "&:hover": {
+                      backgroundColor: "#3e3e3e",
+                    },
+                  }}
+                >
+                  {playlist.images?.[0]?.url && (
+                    <Box
+                      component="img"
+                      src={playlist.images[0].url}
+                      sx={{
+                        width: 45,
+                        height: 45,
+                        objectFit: "cover",
+                        mr: 2,
+                        borderRadius: 1,
+                      }}
+                    />
+                  )}
+
+                  <ListItemText primary={playlist.name} />
+                </ListItemButton>
+              ))}
+
+              {playlists.length === 0 && (
+                <Typography color="gray" p={2}>
+                  No playlists found.
+                </Typography>
+              )}
+            </List>
+          )}
+
+          {message && (
+            <Typography
+              variant="body2"
+              sx={{
+                color: message.includes("successfully")
+                  ? "#1DB954"
+                  : "#ff7777",
+                mt: 2,
+              }}
+            >
+              {message}
+            </Typography>
+          )}
+
+          <Button
+            onClick={() => setOpenPlaylistDialog(false)}
+            disabled={addingTrack}
+            sx={{ color: "white", mt: 1 }}
+          >
+            Cancel
+          </Button>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
