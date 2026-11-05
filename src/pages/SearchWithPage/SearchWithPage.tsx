@@ -74,8 +74,9 @@ const SearchWithPage = () => {
 
   // Open playlist dialog
   const handleOpenPlaylistDialog = async (track: any) => {
+    // Check login status
     if (!accessToken) {
-      setMessage("Please log in first.");
+      alert("Please log in first.");
       return;
     }
 
