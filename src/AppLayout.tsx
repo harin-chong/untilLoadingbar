@@ -1,25 +1,55 @@
+
 import { useEffect, useRef, useState } from "react";
-import { Outlet, NavLink } from "react-router-dom";
-import { Box, Typography, styled } from "@mui/material";
+import {
+  Outlet,
+  NavLink,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  Box,
+  Typography,
+  styled,
+  BottomNavigation,
+  BottomNavigationAction,
+  Paper,
+  Drawer,
+} from "@mui/material";
+
 import HomeIcon from "@mui/icons-material/Home";
 import SearchIcon from "@mui/icons-material/Search";
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 
 import Library from "./layout/components/Library";
 import Profile from "./common/component/Profile";
 import Navbar from "./layout/components/Navbar";
 import { useExchangeToken } from "./hooks/useExchangeToken";
 
+// ==========================================
+// Layout
+// ==========================================
+
 const Layout = styled("div")({
   display: "flex",
   gap: 8,
-  height: "100vh",
+  height: "100dvh",
   padding: 8,
   boxSizing: "border-box",
   overflow: "hidden",
   backgroundColor: "#000",
+
+  "@media (max-width: 768px)": {
+    padding: 0,
+    gap: 0,
+  },
 });
 
-const Sidebar = styled("aside")(({ theme }) => ({
+// ==========================================
+// Desktop Sidebar
+// ==========================================
+
+const Sidebar = styled("aside")({
   width: 331,
   minWidth: 240,
   height: "100%",
@@ -27,10 +57,11 @@ const Sidebar = styled("aside")(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   gap: 8,
-  [theme.breakpoints.down("sm")]: {
+
+  "@media (max-width: 768px)": {
     display: "none",
   },
-}));
+});
 
 const SidePanel = styled(Box)(({ theme }) => ({
   borderRadius: 8,
@@ -50,6 +81,10 @@ const LibraryPanel = styled(SidePanel)({
   overflowY: "auto",
 });
 
+// ==========================================
+// Main Content
+// ==========================================
+
 const MainPanel = styled(Box)(({ theme }) => ({
   flex: "1 1 0",
   minWidth: 0,
@@ -61,7 +96,17 @@ const MainPanel = styled(Box)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.primary,
   boxSizing: "border-box",
+
+  "@media (max-width: 768px)": {
+    width: "100%",
+    height: "100%",
+    borderRadius: 0,
+  },
 }));
+
+// ==========================================
+// Desktop Navigation
+// ==========================================
 
 const NavList = styled("ul")({
   listStyle: "none",
@@ -91,13 +136,46 @@ const StyledNavLink = styled(NavLink)(({ theme }) => ({
   },
 }));
 
+// ==========================================
+// Mobile Navigation
+// ==========================================
+
+const MobileNavigation = styled(Paper)({
+  display: "none",
+
+  "@media (max-width: 768px)": {
+    display: "block",
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    width: "100%",
+    zIndex: 1200,
+    borderRadius: 0,
+    backgroundColor: "#121212",
+    paddingBottom: "env(safe-area-inset-bottom)",
+  },
+});
+
+// ==========================================
+// AppLayout
+// ==========================================
+
 const AppLayout = () => {
   const { mutateAsync } = useExchangeToken();
   const exchangeStarted = useRef(false);
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [accessToken, setAccessToken] = useState<string | null>(() =>
     sessionStorage.getItem("access_token"),
   );
+
+  const [libraryOpen, setLibraryOpen] = useState(false);
+
+  // ==========================================
+  // Spotify OAuth Token Exchange
+  // ==========================================
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -119,7 +197,11 @@ const AppLayout = () => {
       try {
         const tokenData = await mutateAsync(code);
 
-        sessionStorage.setItem("access_token", tokenData.access_token);
+        sessionStorage.setItem(
+          "access_token",
+          tokenData.access_token,
+        );
+
         setAccessToken(tokenData.access_token);
 
         window.history.replaceState(
@@ -138,51 +220,195 @@ const AppLayout = () => {
     void exchange();
   }, [mutateAsync]);
 
+  // ==========================================
+  // Mobile Navigation State
+  // ==========================================
+
+  const getCurrentTab = () => {
+    if (libraryOpen || location.pathname.startsWith("/playlist")) {
+      return "library";
+    }
+
+    if (location.pathname.startsWith("/search")) {
+      return "search";
+    }
+
+    return "home";
+  };
+
+  const handleMobileNavigation = (
+    _event: React.SyntheticEvent,
+    newValue: string,
+  ) => {
+    if (newValue === "library") {
+      setLibraryOpen(true);
+      return;
+    }
+
+    setLibraryOpen(false);
+
+    if (newValue === "home") {
+      navigate("/");
+    }
+
+    if (newValue === "search") {
+      navigate("/search");
+    }
+  };
+
+  // ==========================================
+  // Render
+  // ==========================================
+
   return (
     <Layout>
-      {/* Left sidebar */}
+
+      {/* ==================================
+          Desktop Sidebar
+      ================================== */}
+
       <Sidebar>
-        {/* Home and Search panel */}
+
+        {/* Home and Search */}
+
         <NavigationPanel>
           <NavList>
             <li>
               <StyledNavLink to="/" end>
                 <HomeIcon />
-                <Typography fontWeight={700}>Home</Typography>
+                <Typography fontWeight={700}>
+                  Home
+                </Typography>
               </StyledNavLink>
             </li>
 
             <li>
               <StyledNavLink to="/search">
                 <SearchIcon />
-                <Typography fontWeight={700}>Search</Typography>
+                <Typography fontWeight={700}>
+                  Search
+                </Typography>
               </StyledNavLink>
             </li>
           </NavList>
         </NavigationPanel>
 
-        {/* Library panel */}
+        {/* Library */}
+
         <LibraryPanel>
           <Library accessToken={accessToken} />
         </LibraryPanel>
+
       </Sidebar>
 
-      {/* Main content: remains mounted while nested routes change */}
+      {/* ==================================
+          Main Content
+      ================================== */}
+
       <MainPanel>
         <Box
           sx={{
             position: "relative",
             minHeight: "100%",
+            pb: { xs: "80px", md: 0 },
           }}
         >
           <Navbar accessToken={accessToken} />
+
           <Profile accessToken={accessToken} />
 
-          <Box sx={{ px: { xs: 1, md: 2 }, pb: 2 }}>
+          <Box
+            sx={{
+              px: { xs: 1, md: 2 },
+              pb: 2,
+            }}
+          >
             <Outlet context={{ accessToken }} />
           </Box>
         </Box>
       </MainPanel>
+
+      {/* ==================================
+          Mobile Bottom Navigation
+      ================================== */}
+
+      <MobileNavigation elevation={8}>
+        <BottomNavigation
+          value={getCurrentTab()}
+          onChange={handleMobileNavigation}
+          showLabels
+          sx={{
+            height: 64,
+            backgroundColor: "#121212",
+
+            "& .MuiBottomNavigationAction-root": {
+              color: "#b3b3b3",
+              minWidth: 0,
+              padding: "6px 0",
+            },
+
+            "& .Mui-selected": {
+              color: "#fff",
+            },
+
+            "& .MuiBottomNavigationAction-label": {
+              fontSize: "10px",
+            },
+
+            "& .Mui-selected .MuiBottomNavigationAction-label": {
+              fontSize: "10px",
+            },
+          }}
+        >
+          <BottomNavigationAction
+            label="Home"
+            value="home"
+            icon={<HomeIcon />}
+          />
+
+          <BottomNavigationAction
+            label="Search"
+            value="search"
+            icon={<SearchIcon />}
+          />
+
+          <BottomNavigationAction
+            label="Your Library"
+            value="library"
+            icon={<LibraryMusicIcon />}
+          />
+        </BottomNavigation>
+      </MobileNavigation>
+
+      {/* ==================================
+          Mobile Library Drawer
+      ================================== */}
+
+      <Drawer
+        anchor="bottom"
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        sx={{
+          "& .MuiDrawer-paper": {
+            height: "75dvh",
+            backgroundColor: "#121212",
+            color: "#fff",
+            borderRadius: "12px 12px 0 0",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            height: "100%",
+            overflowY: "auto",
+            p: 2,
+          }}
+        >
+          <Library accessToken={accessToken} />
+        </Box>
+      </Drawer>
+
     </Layout>
   );
 };
